@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment Variables (NEVER COMMIT THESE)
+.env
+*.env
+backend/.env
+
+# Azurite Local Storage
+azurite/
+**/azurite/
+
+# Build Output
+dist/
+build/
+*/dist/
+*/build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db

@@ -3,18 +3,22 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useFileUploader } from '../hooks/useFileUploader';
 
+const BACKEND_URL = 'http://localhost:3001'; // Your local backend
+
 export default function ProcessingPage() {
   const [step, setStep] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   
   const rawFiles = location.state?.files || [];
+  const userEmail = location.state?.email || 'test@example.com';
+  const userName = location.state?.name || 'User';
   
   console.log("ProcessingPage mounted. Files received:", rawFiles);
 
   // Use our custom hook for chunking and uploading
-  const { currentBatch, totalBatches, isUploading, uploadComplete } = useFileUploader(rawFiles, 5);
-
+  const { currentBatch, totalBatches, isUploading, uploadComplete, error } = useFileUploader(rawFiles, userEmail, 5);
+  
   useEffect(() => {
     const runSimulation = async () => {
       await new Promise(r => setTimeout(r, 1000)); setStep(1);
@@ -39,7 +43,21 @@ export default function ProcessingPage() {
         setStep(8);
         
         await new Promise(r => setTimeout(r, 800));
+
+        await fetch('http://localhost:3001/api/analyze/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: userEmail, // Get this from location.state
+            fileName: rawFiles[0]?.name || 'Document',
+            results: "Analysis completed successfully via DGAT simulation."
+          })
+        });
+        //final step
+
         navigate('/success');
+        //now opens to success page 
+
       }
     };
 

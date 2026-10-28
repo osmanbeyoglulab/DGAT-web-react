@@ -6,6 +6,7 @@ require('dotenv').config();
 const { generateUploadSasToken } = require('./azure/blobService');
 const { enqueueAnalysisTask } = require('./azure/queueService');
 const { configureAzuriteCors } = require('./setCors'); 
+const { sendAnalysisCompleteEmail } = require('./azure/emailService'); // <-- Import
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -60,6 +61,29 @@ app.post('/api/upload/complete', async (req, res) => {
   } catch (error) {
     console.error('Error enqueueing task:', error);
     res.status(500).json({ error: 'Failed to queue file for analysis' });
+  }
+});
+
+// Simulated endpoint to trigger the email (for local testing)
+app.post('/api/analyze/complete', async (req, res) => {
+  try {
+    const { email, fileName, simulatedResults } = req.body;  //this is currently set to simulated results should just be results but will leave it as it 
+
+    if (!email || !fileName) {
+      return res.status(400).json({ error: 'email and fileName are required' });
+    }
+
+    // Mock AI analysis results for the demo
+    const mockResults = simulatedResults || `Document processed successfully.\nAI Summary: This document appears to be a valid submission.\nConfidence Score: 98%`;
+
+    // Send the email
+    await sendAnalysisCompleteEmail(email, fileName, mockResults);
+
+    res.status(200).json({ success: true, message: 'Email sent successfully' });
+
+  } catch (error) {
+    console.error('Error in /api/analyze/complete:', error);
+    res.status(500).json({ error: 'Failed to send email' });
   }
 });
 

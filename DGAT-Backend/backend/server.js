@@ -7,6 +7,7 @@ const { generateUploadSasToken } = require('./azure/blobService');
 const { enqueueAnalysisTask } = require('./azure/queueService');
 const { configureAzuriteCors } = require('./setCors'); 
 const { sendAnalysisCompleteEmail } = require('./azure/emailService'); // <-- Import
+const { QueueServiceClient } = require('@azure/storage-queue');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -49,13 +50,12 @@ app.post('/api/upload/complete', async (req, res) => {
     if (!blobName || !userEmail) {
       return res.status(400).json({ error: 'blobName and userEmail are required' });
     }
-
     // Trigger the DGAT tool by sending a message to the queue
     await enqueueAnalysisTask(blobName, userEmail, originalFileName);
 
     res.status(200).json({ 
       success: true, 
-      message: 'File successfully queued for analysis' 
+      message: 'File successfully queued for analysis', 
     });
 
   } catch (error) {

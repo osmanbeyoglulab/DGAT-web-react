@@ -44,15 +44,15 @@ export default function ProcessingPage() {
         
         await new Promise(r => setTimeout(r, 800));
 
-        await fetch('http://localhost:3001/api/analyze/complete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: userEmail, // Get this from location.state
-            fileName: rawFiles[0]?.name || 'Document',
-            results: "Analysis completed successfully via DGAT simulation."
-          })
-        });
+        // await fetch('http://localhost:3001/api/analyze/complete', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({
+        //     email: userEmail, // Get this from location.state
+        //     fileName: rawFiles[0]?.name || 'Document',
+        //     results: "Analysis completed successfully via DGAT simulation."
+        //   })
+        // });
         //final step
 
         navigate('/success');

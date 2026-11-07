@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # 1. Local Azure Emulator
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+    command: "azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --skipApiVersionCheck"
+
+  # 2. The DGAT AI Model (FastAPI app)
+  dgat-ai-worker:
+    build: ./DGAT-AI-Worker  # <-- Updated path
+    ports:
+      - "8081:80"
+    environment:
+      - PORT=80
+
+  # 3. The Queue Orchestrator
+  queue-worker:
+    build: ./DGAT-Queue-Worker
+    depends_on:
+      - azurite
+      - dgat-ai-worker
+    extra_hosts: 
+      - "host.docker.internal:host-gateway"
+    environment:
+      - PYTHONUNBUFFERED=1  # <--- ADD THIS
+      # Notice we use the service names (azurite, dgat-ai-worker) instead of localhost!
+      - AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;
+      # Updated URL to match the new service name
+      - DGAT_API_URL=http://dgat-ai-worker:80/analyze 
+      - BACKEND_URL=http://host.docker.internal:3001

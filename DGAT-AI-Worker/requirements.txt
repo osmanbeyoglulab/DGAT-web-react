@@ -1,9 +1,0 @@
-# requirements.txt
-azure-storage-blob
-azure-storage-queue
-# Add your AI dependencies below (examples)
-# tensorflow
-# torch
-# transformers
-# pandas
-# numpy

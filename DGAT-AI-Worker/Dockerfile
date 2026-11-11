@@ -1,25 +1,37 @@
-# Dockerfile
-# Use an official Python runtime as a parent image
-FROM python:3.10-slim
+# ---- Base Image ----
+FROM python:3.11-slim
 
-# Set environment variables to prevent Python from writing .pyc files and buffering stdout
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-
-# Set the working directory in the container
-WORKDIR /app
-
-# Install system dependencies if your AI model needs them (e.g., libgomp1 for PyTorch)
-RUN apt-get update && apt-get install -y \
-    libgomp1 \
+# ---- System Dependencies ----
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libhdf5-dev \
+    git \
+    curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# ---- Working Directory ----
+WORKDIR /app
 
-# Copy the rest of the application code and model files
-COPY . .
+# ---- Clone DGAT Repository ----
+RUN git clone https://github.com/osmanbeyoglulab/DGAT.git .
 
-# Run the worker script when the container launches
-CMD ["python", "worker.py"]
+# ---- Install Python Dependencies (CPU-only) ----
+# Install DGAT requirements AND your web server dependencies
+RUN pip install --no-cache-dir -r requirements_CPU.txt \
+    && pip install --no-cache-dir fastapi uvicorn python-multipart
+
+# ---- Download and Extract Pretrained Model ----
+RUN curl -L -o /tmp/DGAT_pretrained_models.zip \
+    "https://zenodo.org/records/23896227/files/DGAT_pretrained_models.zip?download=1" \
+    && unzip /tmp/DGAT_pretrained_models.zip -d /app/ \
+    && rm /tmp/DGAT_pretrained_models.zip
+
+# ---- Copy Your Inference Wrapper ----
+COPY serve.py /app/serve.py
+
+# ---- Expose the Port ----
+EXPOSE 80
+
+# ---- Start the API Server ----
+CMD ["uvicorn", "serve:app", "--host", "0.0.0.0", "--port", "80"]

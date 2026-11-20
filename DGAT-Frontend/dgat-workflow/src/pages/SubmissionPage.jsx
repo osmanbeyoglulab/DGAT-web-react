@@ -42,8 +42,12 @@ export default function SubmissionPage() {
           <input type="email" placeholder="Enter your email address" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div className="form-group">
-          <label>Upload Document:</label>
-          <input type="file" multiple onChange={(e) => setFile(e.target.files)} />
+          <label>Upload Spatial Data (.h5ad):</label>
+          <input 
+            type="file" 
+            accept=".h5ad"
+            multiple 
+            onChange={(e) => setFile(e.target.files)} />
         </div>
         {error && <p className="error-text">{error}</p>}
         

@@ -31,7 +31,7 @@ def main():
     while True:
         try:
             # Poll the queue
-            messages = queue_client.receive_messages(messages_per_page=1, visibility_timeout=600)
+            messages = queue_client.receive_messages(messages_per_page=1, visibility_timeout=1800)
             
             for msg in messages:
                 try:

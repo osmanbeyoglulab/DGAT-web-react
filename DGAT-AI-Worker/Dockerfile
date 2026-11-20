@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     git \
     curl \
-    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # ---- Working Directory ----
@@ -21,19 +20,18 @@ RUN git clone https://github.com/osmanbeyoglulab/DGAT.git .
 # ---- Install Python Dependencies (CPU-only) ----
 # Install DGAT requirements AND your web server dependencies
 RUN pip install --no-cache-dir -r requirements_CPU.txt \
-    && pip install --no-cache-dir fastapi uvicorn python-multipart
-
-# ---- Download and Extract Pretrained Model ----
-RUN curl -L -o /tmp/DGAT_pretrained_models.zip \
-    "https://zenodo.org/records/23896227/files/DGAT_pretrained_models.zip?download=1" \
-    && unzip /tmp/DGAT_pretrained_models.zip -d /app/ \
-    && rm /tmp/DGAT_pretrained_models.zip
+    && pip install --no-cache-dir fastapi uvicorn python-multipart azure-storage-blob
 
 # ---- Copy Your Inference Wrapper ----
 COPY serve.py /app/serve.py
+COPY download_model.py /app/download_model.py
+COPY entrypoint.sh /app/entrypoint.sh
+
+# ---- Make the entrypoint script executable ----
+RUN chmod +x /app/entrypoint.sh
 
 # ---- Expose the Port ----
 EXPOSE 80
 
-# ---- Start the API Server ----
-CMD ["uvicorn", "serve:app", "--host", "0.0.0.0", "--port", "80"]
+# ---- Executes the startup script ----
+ENTRYPOINT ["/app/entrypoint.sh"]

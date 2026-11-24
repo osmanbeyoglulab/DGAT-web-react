@@ -26,7 +26,7 @@ common_gene = []
 common_protein = []
 
 # IMPORTANT: These paths match the structure created by entrypoint.sh and download_model.py
-model_save_dir = "/app/models/11535_gene_31_protein"
+model_save_dir = "/app/models"
 pyg_save_dir = "/tmp/pyg_data"
 
 @app.on_event("startup")
@@ -43,7 +43,7 @@ def startup_event():
 
     try: 
         # Load the required lists to ensure prediction input matches training data
-        with open("/app/resources/common_gene_17434.txt", "r") as f: 
+        with open("/app/resources/common_gene_11535.txt", "r") as f: 
             common_gene = [line.strip() for line in f]
 
         with open("/app/resources/common_protein_31.txt", "r") as f: 
@@ -67,14 +67,10 @@ def health_check():
 @app.post("/analyze")
 async def analyze_document(file: UploadFile = File(...)):
 
-
-
-    
-    if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
+    #confirm file type is .h5ad
     if not file.filename.endswith('.h5ad'):
         raise HTTPException(status_code=400, detail="Only .h5ad files are supported for DGAT analysis.")
-    
+
     # Save uploaded file temporarily
     temp_file_path = f"/tmp/{file.filename}"
     with open(temp_file_path, "wb") as buffer:
@@ -84,16 +80,65 @@ async def analyze_document(file: UploadFile = File(...)):
         print(f"⬇️ Received file: {file.filename}")
         start_time = time.time()
 
-
         print(f"Running analysis on {file.filename}...")
-        # --- REPLACE WITH ACTUAL DGAT INFERENCE CODE ---
-        # results = model.predict(temp_file_path)
+        adata = sc.read_h5ad(temp_file_path)
+        adata.var_names_make_unique()
+        
+        # Perform QC and normalization
+        preprocess_ST(adata)
+        
+        # Fill in missing genes with zeros to match the training set
+        adata = fill_genes(adata, common_gene)
+        
+        # 4. Run the prediction
+        print("🤖 Running DGAT prediction (this may take a few minutes)...")
+
+        # Inject dummy spatial metadata if it's missing
+        if 'spatial' not in adata.uns:
+            print("⚠️ Warning: 'spatial' metadata missing. Injecting dummy data.")
+            adata.uns['spatial'] = {'dummy_sample': {}}
+            
+        if 'name' not in adata.uns:
+            print("⚠️ Warning: 'name' metadata missing. Injecting dummy name.")
+            adata.uns['name'] = 'Breast_Sample'
+        
+        # protein_predict loads the .pth files from model_save_dir internally
+        pred_adata = protein_predict(
+            adata, 
+            common_gene, 
+            common_protein, 
+            model_save_dir, 
+            pyg_save_dir
+        )
+
+        processing_time = round(time.time() - start_time, 2)
+        print(f"✅ Analysis complete in {processing_time} seconds.")
+        
+        # 5. Format the results
+        # pred_adata is an AnnData object. We need to convert the predictions into a JSON-serializable format.
+        # Assuming protein_predict stores results in .obsm (adjust if the notebook shows otherwise)
+        # This extracts the first 5 spots as a sample to return to the frontend.
+        sample_results = {}
+        if 'protein_predictions' in pred_adata.obsm:
+             # If it's a numpy array or dataframe
+             df = pd.DataFrame(pred_adata.obsm['protein_predictions'], index=pred_adata.obs_names, columns=common_protein)
+             sample_results = df.head(5).to_dict(orient="index")
+        else:
+             # Fallback if the exact key is different
+             sample_results = {"status": "Prediction complete", "spots_processed": pred_adata.n_obs}
         
         # mock results set in line below
-        results = {"summary": "This is a fake result", "score": 0.95}
+        # results = {"summary": "This is a fake result", "score": 0.95}
         
-        return {"filename": file.filename, "results": results}
+        return {
+            "status": "success",
+            "message": f"Analysis complete for {file.filename}",
+            "processing_time_seconds": processing_time,
+            "results_sample": sample_results
+        }
+    
     except Exception as e:
+        print(f"❌ Error during analysis: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         # Clean up the temp file

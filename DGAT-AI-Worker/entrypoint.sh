@@ -2,6 +2,7 @@
 set -e
 
 # 1. Download the model weights from Azure Storage (or use the local cache)
+echo "🐍 Running download script..."
 python /app/download_model.py
 
 # 2. Start the FastAPI Server
